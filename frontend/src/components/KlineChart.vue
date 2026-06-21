@@ -102,7 +102,8 @@ function render() {
         xAxisIndex: 2,
         yAxisIndex: 2,
         data: props.rows.map((row) => num(row.macd_hist)),
-        barWidth: "58%",
+        barWidth: "5%",
+        barMaxWidth: 8,
         itemStyle: {
           color: (params: { value: number }) => (params.value >= 0 ? "#d93025" : "#008f5d"),
         },
