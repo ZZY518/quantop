@@ -15,12 +15,14 @@ from app.models.factor import FactorStockDaily
 from app.models.stock import StockBasic
 from app.models.sync_log import SyncTaskLog
 from app.schemas.bar import DwdStockBarRead, FactorStockBarRead, StockChartBarRead
+from app.schemas.hot_rank import HotRankRead
 from app.schemas.daily import DwdStockDailyRead, MarketRankRead
 from app.schemas.factor import FactorRankRead, FactorStockDailyRead
 from app.schemas.stock import StockBasicRead
 from app.schemas.sync_log import SyncTaskLogRead
 from app.data_sources.factory import DataSourceNotConfigured, DataSourceUnavailable
-from app.services.query_service import factor_rank, market_rank, recent_logs, stock_chart_bars
+from app.services.hot_rank_service import hot_rank
+from app.services.query_service import factor_rank, market_quotes, market_rank, recent_logs, stock_chart_bars
 from app.services.sync_service import SyncService
 
 router = APIRouter()
@@ -174,13 +176,26 @@ def get_stock_chart(
 
 @router.get("/market/rank", response_model=list[MarketRankRead] | list[FactorRankRead])
 def get_market_rank(
-    limit: int = Query(default=20, ge=1, le=100),
+    limit: int = Query(default=20, ge=1, le=500),
     rank_type: str = Query(default="pct_chg", pattern="^(pct_chg|score)$"),
     db: Session = Depends(get_db),
 ):
     if rank_type == "score":
         return factor_rank(db, limit)
     return market_rank(db, limit)
+
+
+@router.get("/market/quotes", response_model=list[MarketRankRead])
+def get_market_quotes(db: Session = Depends(get_db)):
+    return market_quotes(db)
+
+
+@router.get("/market/hot-rank", response_model=list[HotRankRead])
+def get_market_hot_rank(limit: int = Query(default=50, ge=1, le=200), db: Session = Depends(get_db)):
+    try:
+        return hot_rank(limit, db=db)
+    except DataSourceUnavailable as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 @router.get("/sync/logs", response_model=list[SyncTaskLogRead])

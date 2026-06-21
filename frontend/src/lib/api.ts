@@ -66,6 +66,17 @@ export type Factor = {
   total_score: number | null;
 };
 
+export type HotRank = {
+  rank: number;
+  symbol: string;
+  name: string;
+  latest_price: number | null;
+  change_amount: number | null;
+  pct_chg: number | null;
+  source: string;
+  fetched_at: string;
+};
+
 export type SyncLog = {
   id: number;
   task_name: string;

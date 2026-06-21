@@ -119,7 +119,7 @@ async function loadQuotes() {
   loading.value = true;
   error.value = "";
   try {
-    rows.value = await apiGet<QuoteRow[]>("/market/rank?limit=100");
+    rows.value = await apiGet<QuoteRow[]>("/market/quotes");
   } catch (err) {
     error.value = err instanceof Error ? err.message : "加载市场行情失败";
   } finally {

@@ -74,6 +74,7 @@ class SyncService:
             top_stocks = client.get_top_amount_stocks(limit=limit, trade_date=end_date)
             for stock in top_stocks:
                 self.db.merge(StockBasic(**stock))
+            self.db.flush()
             symbols = [stock["symbol"] for stock in top_stocks]
             total = self._sync_daily_for_symbols(symbols, start_date=start_date, end_date=end_date)
             total += self._run_indicator_pipeline(symbols, start_date=start_date, end_date=end_date)
@@ -114,6 +115,7 @@ class SyncService:
                 total = BarService(self.db, client.source).aggregate_for_symbols(
                     symbols, period, start_date=start_date, end_date=end_date
                 )
+                self.db.flush()
             total += FactorService(self.db).calculate_bar_for_symbols(symbols, period)
             self._finish_log(log, total, total, 0)
         except Exception as exc:
@@ -147,6 +149,7 @@ class SyncService:
         total = 0
         for period in DERIVED_PERIODS:
             total += bar_service.aggregate_for_symbols(symbols, period, start_date=start_date, end_date=end_date)
+        self.db.flush()
         total += factor_service.calculate_daily_for_symbols(symbols)
         for period in FACTOR_PERIODS:
             total += factor_service.calculate_bar_for_symbols(symbols, period)
@@ -167,6 +170,7 @@ class SyncService:
                 self._insert_ods_bar_once(row, "1d", "stock_bar")
                 self.db.merge(DwdStockDaily(**row, source=self.data_client.source))
                 self.db.merge(DwdStockBar(**row, period="1d", source=self.data_client.source))
+        self.db.flush()
         return total
 
     def _insert_ods_daily_once(self, row: dict) -> None:

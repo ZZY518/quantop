@@ -4,6 +4,7 @@
     <nav>
       <RouterLink to="/">总览</RouterLink>
       <RouterLink to="/market">市场</RouterLink>
+      <RouterLink to="/hot-rank">人气</RouterLink>
       <RouterLink to="/factors">因子</RouterLink>
       <RouterLink to="/sync">同步</RouterLink>
     </nav>

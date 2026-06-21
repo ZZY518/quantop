@@ -235,6 +235,58 @@ th {
   text-align: right;
 }
 
+.hot-rank-table {
+  table-layout: fixed;
+  min-width: 1020px;
+}
+
+.hot-rank-table th:nth-child(1),
+.hot-rank-table td:nth-child(1) {
+  width: 72px;
+}
+
+.hot-rank-table th:nth-child(2),
+.hot-rank-table td:nth-child(2) {
+  width: 132px;
+}
+
+.hot-rank-table th:nth-child(3),
+.hot-rank-table td:nth-child(3) {
+  width: 160px;
+}
+
+.hot-rank-table th:nth-child(4),
+.hot-rank-table td:nth-child(4),
+.hot-rank-table th:nth-child(5),
+.hot-rank-table td:nth-child(5),
+.hot-rank-table th:nth-child(6),
+.hot-rank-table td:nth-child(6) {
+  width: 126px;
+}
+
+.hot-rank-table th:nth-child(7),
+.hot-rank-table td:nth-child(7) {
+  width: 220px;
+  font-size: 12px;
+  text-align: left;
+}
+
+.hot-rank-table th,
+.hot-rank-table td {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.hot-rank-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hot-rank-time {
+  padding-left: 14px;
+  white-space: nowrap;
+}
+
 .up {
   color: var(--up);
   font-weight: 700;

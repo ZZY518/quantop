@@ -37,6 +37,22 @@ def market_rank(db: Session, limit: int = 20) -> list[dict]:
     return [{"name": name, **to_dict(daily)} for daily, name in rows]
 
 
+def market_quotes(db: Session) -> list[dict]:
+    latest = (
+        select(DwdStockDaily.symbol, func.max(DwdStockDaily.trade_date).label("trade_date"))
+        .where(DwdStockDaily.adjust == DEFAULT_ADJUST)
+        .group_by(DwdStockDaily.symbol)
+        .subquery()
+    )
+    rows = db.execute(
+        select(DwdStockDaily, StockBasic.name)
+        .join(latest, (DwdStockDaily.symbol == latest.c.symbol) & (DwdStockDaily.trade_date == latest.c.trade_date))
+        .join(StockBasic, StockBasic.symbol == DwdStockDaily.symbol, isouter=True)
+        .order_by(DwdStockDaily.symbol)
+    ).all()
+    return [{"name": name, **to_dict(daily)} for daily, name in rows]
+
+
 def factor_rank(db: Session, limit: int = 20) -> list[dict]:
     latest = latest_factor_subquery(db)
     rows = db.execute(
