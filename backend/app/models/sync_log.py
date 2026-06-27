@@ -19,5 +19,8 @@ class SyncTaskLog(Base):
     total_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     success_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     fail_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    progress_total: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    progress_done: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    progress_message: Mapped[str | None] = mapped_column(String(255))
     error_message: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)

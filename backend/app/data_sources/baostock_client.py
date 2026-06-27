@@ -41,6 +41,9 @@ class BaoStockDataSourceClient:
         ranked.sort(key=lambda row: row["amount"], reverse=True)
         return [{key: row[key] for key in ("symbol", "name", "market", "exchange", "industry", "list_date", "status")} for row in ranked[:limit]]
 
+    def get_stock_basic(self) -> list[dict]:
+        return self._all_stocks(self._latest_trade_date(date.today()))
+
     def get_stock_daily(
         self,
         symbol: str,

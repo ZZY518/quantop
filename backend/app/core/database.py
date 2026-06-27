@@ -51,3 +51,12 @@ def ensure_sqlite_schema() -> None:
             if "adjust" not in columns:
                 conn.execute(text(f"ALTER TABLE {table} ADD COLUMN adjust VARCHAR(16) NOT NULL DEFAULT '{DEFAULT_ADJUST}'"))
             conn.execute(text(f"UPDATE {table} SET adjust = :adjust WHERE adjust IS NULL OR adjust = ''"), {"adjust": DEFAULT_ADJUST})
+
+        if "sync_task_log" in existing_tables:
+            columns = {column["name"] for column in inspector.get_columns("sync_task_log")}
+            if "progress_total" not in columns:
+                conn.execute(text("ALTER TABLE sync_task_log ADD COLUMN progress_total INTEGER NOT NULL DEFAULT 0"))
+            if "progress_done" not in columns:
+                conn.execute(text("ALTER TABLE sync_task_log ADD COLUMN progress_done INTEGER NOT NULL DEFAULT 0"))
+            if "progress_message" not in columns:
+                conn.execute(text("ALTER TABLE sync_task_log ADD COLUMN progress_message VARCHAR(255)"))

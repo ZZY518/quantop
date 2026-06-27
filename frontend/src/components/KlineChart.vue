@@ -1,6 +1,6 @@
 <template>
   <div v-if="rows.length === 0" class="chart-empty">暂无K线数据</div>
-  <div v-else ref="chartRef" class="chart"></div>
+  <div v-else ref="chartRef" class="chart kline-chart"></div>
 </template>
 
 <script setup lang="ts">
@@ -10,7 +10,7 @@ import type { ChartBar } from "@/lib/api";
 
 const props = defineProps<{ rows: ChartBar[] }>();
 const emit = defineEmits<{
-  zoomChange: [zoom: { start: number; end: number }];
+  zoomChange: [zoom: { start: number; end: number; startDate: string; endDate: string }];
 }>();
 const chartRef = ref<HTMLDivElement | null>(null);
 let chart: echarts.ECharts | null = null;
@@ -44,7 +44,7 @@ function render() {
       formatter: tooltipFormatter,
     },
     legend: {
-      top: 2,
+      top: 0,
       left: 8,
       itemWidth: 16,
       itemHeight: 8,
@@ -53,9 +53,9 @@ function render() {
     },
     axisPointer: { link: [{ xAxisIndex: "all" }] },
     grid: [
-      { left: 56, right: 54, top: 34, height: "51%" },
-      { left: 56, right: 54, top: "63%", height: "13%" },
-      { left: 56, right: 54, top: "80%", height: "13%" },
+      { left: 56, right: 54, top: 20, height: "66%" },
+      { left: 56, right: 54, top: "72%", height: "10%" },
+      { left: 56, right: 54, top: "84%", height: "10%" },
     ],
     xAxis: [
       axis(dates, true),
@@ -69,7 +69,7 @@ function render() {
     ],
     dataZoom: [
       { type: "inside", xAxisIndex: [0, 1, 2], start: zoomStart(), end: 100 },
-      { type: "slider", xAxisIndex: [0, 1, 2], height: 22, bottom: 8, borderColor: "#dce1e7" },
+      { type: "slider", xAxisIndex: [0, 1, 2], height: 16, bottom: 4, borderColor: "#dce1e7" },
     ],
     series: [
       {
@@ -121,7 +121,15 @@ function handleDataZoom() {
   const start = Number(dataZoom?.start ?? 0);
   const end = Number(dataZoom?.end ?? 100);
   if (Number.isFinite(start) && Number.isFinite(end)) {
-    emit("zoomChange", { start, end });
+    const maxIndex = Math.max(props.rows.length - 1, 0);
+    const startIndex = Math.min(maxIndex, Math.max(0, Math.round((start / 100) * maxIndex)));
+    const endIndex = Math.min(maxIndex, Math.max(startIndex, Math.round((end / 100) * maxIndex)));
+    emit("zoomChange", {
+      start,
+      end,
+      startDate: props.rows[startIndex]?.trade_date ?? "",
+      endDate: props.rows[endIndex]?.trade_date ?? "",
+    });
   }
 }
 

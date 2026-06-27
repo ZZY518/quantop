@@ -88,6 +88,9 @@ export type SyncLog = {
   total_count: number;
   success_count: number;
   fail_count: number;
+  progress_total: number;
+  progress_done: number;
+  progress_message: string | null;
   error_message: string | null;
 };
 
@@ -105,6 +108,12 @@ export async function apiGet<T>(path: string): Promise<T> {
 export async function apiPost<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, { method: "POST" });
   if (!res.ok) throw new Error(await errorMessage(res, "POST", path));
+  return res.json();
+}
+
+export async function apiDelete<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(await errorMessage(res, "DELETE", path));
   return res.json();
 }
 

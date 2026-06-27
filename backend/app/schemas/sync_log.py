@@ -16,5 +16,8 @@ class SyncTaskLogRead(BaseModel):
     total_count: int
     success_count: int
     fail_count: int
+    progress_total: int
+    progress_done: int
+    progress_message: str | None
     error_message: str | None
     created_at: datetime

@@ -44,32 +44,62 @@ class AkShareDataSourceClient:
                     "market": "CN",
                     "exchange": self._exchange(code),
                     "industry": None,
-                    "list_date": None,
+                    "list_date": self._parse_yyyymmdd(row.get("上市日期")),
+                    "status": "listed",
+                }
+            )
+        return stocks
+
+    def get_stock_basic(self) -> list[dict]:
+        rows_by_code = {}
+        page = 1
+        page_size = 100
+        while True:
+            page_rows = self._get_stock_basic_eastmoney_page(page=page, page_size=page_size)
+            if not page_rows:
+                break
+            for row in page_rows:
+                code = row.get("f12")
+                if code:
+                    rows_by_code[str(code)] = row
+            if len(page_rows) < page_size:
+                break
+            page += 1
+
+        stocks: list[dict] = []
+        for row in rows_by_code.values():
+            code = self._normalize_code(row.get("f12"))
+            stocks.append(
+                {
+                    "symbol": self._to_symbol(code),
+                    "name": str(row.get("f14") or ""),
+                    "market": "CN",
+                    "exchange": self._exchange(code),
+                    "industry": None,
+                    "list_date": self._parse_yyyymmdd(row.get("f26")),
                     "status": "listed",
                 }
             )
         return stocks
 
     def _get_top_amount_spot_eastmoney(self, limit: int) -> pd.DataFrame:
-        session = requests.Session()
-        session.trust_env = False
-        url = "https://push2.eastmoney.com/api/qt/clist/get"
-        params = {
-            "pn": 1,
-            "pz": limit,
-            "po": 1,
-            "np": 1,
-            "ut": "bd1d9ddb04089700cf9c27f6f7426281",
-            "fltt": 2,
-            "invt": 2,
-            "fid": "f6",
-            "fs": "m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23",
-            "fields": "f12,f14,f2,f3,f6",
-        }
-        response = session.get(url, params=params, timeout=30)
-        response.raise_for_status()
-        payload = response.json()
-        rows = payload.get("data", {}).get("diff", [])
+        rows_by_code = {}
+        page = 1
+        page_size = min(max(limit, 1), 100)
+        target_count = limit + page_size
+        while len(rows_by_code) < target_count:
+            page_rows = self._get_top_amount_spot_eastmoney_page(page=page, page_size=page_size)
+            if not page_rows:
+                break
+            for row in page_rows:
+                code = row.get("f12")
+                if code:
+                    rows_by_code[str(code)] = row
+            if len(page_rows) < page_size:
+                break
+            page += 1
+
+        rows = list(rows_by_code.values())
         return pd.DataFrame(
             [
                 {
@@ -78,10 +108,53 @@ class AkShareDataSourceClient:
                     "最新价": item.get("f2"),
                     "涨跌幅": item.get("f3"),
                     "成交额": item.get("f6"),
+                    "上市日期": item.get("f26"),
                 }
                 for item in rows
             ]
         )
+
+    def _get_top_amount_spot_eastmoney_page(self, page: int, page_size: int) -> list[dict]:
+        session = requests.Session()
+        session.trust_env = False
+        url = "https://push2.eastmoney.com/api/qt/clist/get"
+        params = {
+            "pn": page,
+            "pz": page_size,
+            "po": 1,
+            "np": 1,
+            "ut": "bd1d9ddb04089700cf9c27f6f7426281",
+            "fltt": 2,
+            "invt": 2,
+            "fid": "f6",
+            "fs": "m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23",
+            "fields": "f12,f14,f2,f3,f6,f26",
+        }
+        response = session.get(url, params=params, timeout=30)
+        response.raise_for_status()
+        payload = response.json()
+        return payload.get("data", {}).get("diff", []) or []
+
+    def _get_stock_basic_eastmoney_page(self, page: int, page_size: int) -> list[dict]:
+        session = requests.Session()
+        session.trust_env = False
+        url = "https://push2.eastmoney.com/api/qt/clist/get"
+        params = {
+            "pn": page,
+            "pz": page_size,
+            "po": 0,
+            "np": 1,
+            "ut": "bd1d9ddb04089700cf9c27f6f7426281",
+            "fltt": 2,
+            "invt": 2,
+            "fid": "f12",
+            "fs": "m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23",
+            "fields": "f12,f14,f26",
+        }
+        response = session.get(url, params=params, timeout=30)
+        response.raise_for_status()
+        payload = response.json()
+        return payload.get("data", {}).get("diff", []) or []
 
     def get_stock_daily(
         self,
@@ -246,6 +319,17 @@ class AkShareDataSourceClient:
         if value is None or pd.isna(value):
             return None
         return Decimal(str(value))
+
+    def _parse_yyyymmdd(self, value) -> date | None:
+        if value is None or pd.isna(value):
+            return None
+        text = str(value).strip()
+        if not text or text == "-":
+            return None
+        try:
+            return pd.to_datetime(text, format="%Y%m%d").date()
+        except ValueError:
+            return pd.to_datetime(text).date()
 
     def _disable_broken_proxy_env(self) -> None:
         for key in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"):

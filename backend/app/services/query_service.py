@@ -73,8 +73,19 @@ def to_dict(obj) -> dict:
     return data
 
 
-def recent_logs(db: Session, limit: int = 50) -> list[SyncTaskLog]:
-    return db.scalars(select(SyncTaskLog).order_by(desc(SyncTaskLog.start_time)).limit(limit)).all()
+def recent_logs(db: Session, limit: int = 50) -> list[dict]:
+    rows = db.scalars(select(SyncTaskLog).order_by(desc(SyncTaskLog.start_time)).limit(limit)).all()
+    return [_sync_log_to_read_dict(row) for row in rows]
+
+
+def _sync_log_to_read_dict(row: SyncTaskLog) -> dict:
+    data = to_dict(row)
+    status = str(row.status or "").lower()
+    if status in {"success", "partial_success"} and not data["progress_total"]:
+        data["progress_total"] = 1
+        data["progress_done"] = 1
+        data["progress_message"] = data["progress_message"] or "同步完成"
+    return data
 
 
 def stock_chart_bars(db: Session, symbol: str, period: str, limit: int = 240) -> list[dict]:

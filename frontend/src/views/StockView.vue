@@ -1,5 +1,5 @@
 <template>
-  <div class="page">
+  <div class="page stock-page">
     <section class="section stock-header" v-if="stock">
       <div>
         <h1>{{ stock.name }} {{ stock.symbol }}</h1>
@@ -33,19 +33,9 @@
       </div>
     </section>
 
-    <section class="section">
+    <section class="section chart-section">
       <div class="section-head">
         <h2>K线行情 <span class="muted count-text">{{ chartRows.length }} bars</span></h2>
-        <div class="segmented">
-          <button
-            v-for="item in periods"
-            :key="item.value"
-            :class="{ secondary: period !== item.value }"
-            @click="setPeriod(item.value)"
-          >
-            {{ item.label }}
-          </button>
-        </div>
       </div>
       <KlineChart :rows="chartRows" @zoom-change="chartZoom = $event" />
     </section>
@@ -74,12 +64,7 @@ const stock = ref<Stock | null>(null);
 const chartRows = ref<ChartBar[]>([]);
 const factors = ref<Factor[]>([]);
 const period = ref("1d");
-const chartZoom = ref<{ start: number; end: number } | undefined>();
-const periods = [
-  { label: "日线", value: "1d" },
-  { label: "周线", value: "1w" },
-  { label: "月线", value: "1m" },
-];
+const chartZoom = ref<{ start: number; end: number; startDate?: string; endDate?: string } | undefined>();
 
 const latestBar = computed(() => chartRows.value[chartRows.value.length - 1] || null);
 const previousBar = computed(() => (chartRows.value.length > 1 ? chartRows.value[chartRows.value.length - 2] : null));
@@ -105,14 +90,9 @@ onMounted(async () => {
 async function loadPeriod() {
   chartZoom.value = undefined;
   [chartRows.value, factors.value] = await Promise.all([
-    apiGet<ChartBar[]>(`/stocks/${props.symbol}/chart?period=${period.value}&limit=240`),
-    apiGet<Factor[]>(`/stocks/${props.symbol}/bar-factors?period=${period.value}&limit=240`),
+    apiGet<ChartBar[]>(`/stocks/${props.symbol}/chart?period=${period.value}&limit=2000`),
+    apiGet<Factor[]>(`/stocks/${props.symbol}/bar-factors?period=${period.value}&limit=2000`),
   ]);
-}
-
-async function setPeriod(value: string) {
-  period.value = value;
-  await loadPeriod();
 }
 
 function format(value: number | string | null | undefined) {

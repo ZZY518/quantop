@@ -1,7 +1,7 @@
 from datetime import date, datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
@@ -65,6 +65,42 @@ def run_sync(
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
+@router.post("/sync/backfill-listing-history", response_model=SyncTaskLogRead)
+def run_listing_history_backfill(
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    try:
+        running_log = db.scalars(
+            select(SyncTaskLog)
+            .where(SyncTaskLog.status == "running")
+            .order_by(SyncTaskLog.start_time.desc())
+            .limit(1)
+        ).first()
+        if running_log:
+            return running_log
+
+        data_source = get_data_source()
+        if data_source == "none":
+            raise DataSourceNotConfigured("No real data source is configured. Set QUANTOP_DATA_SOURCE before syncing.")
+        log = SyncTaskLog(
+            task_name="stock_daily_listing_history",
+            source=data_source,
+            biz_date=date.today(),
+            status="running",
+            start_time=datetime.utcnow(),
+        )
+        db.add(log)
+        db.commit()
+        db.refresh(log)
+        background_tasks.add_task(_run_listing_history_backfill, log.id)
+        return log
+    except DataSourceNotConfigured as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except DataSourceUnavailable as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
 def _run_stock_daily_top_amount_sync(log_id: int, limit: int) -> None:
     db = SessionLocal()
     try:
@@ -72,6 +108,17 @@ def _run_stock_daily_top_amount_sync(log_id: int, limit: int) -> None:
         if log is None:
             return
         SyncService(db).sync_stock_daily_top_amount(limit=limit, log=log)
+    finally:
+        db.close()
+
+
+def _run_listing_history_backfill(log_id: int) -> None:
+    db = SessionLocal()
+    try:
+        log = db.get(SyncTaskLog, log_id)
+        if log is None:
+            return
+        SyncService(db).sync_listing_history_for_existing_stocks(log=log)
     finally:
         db.close()
 
@@ -201,6 +248,13 @@ def get_market_hot_rank(limit: int = Query(default=50, ge=1, le=200), db: Sessio
 @router.get("/sync/logs", response_model=list[SyncTaskLogRead])
 def get_sync_logs(limit: int = Query(default=50, ge=1, le=200), db: Session = Depends(get_db)):
     return recent_logs(db, limit)
+
+
+@router.delete("/sync/logs")
+def clear_sync_logs(db: Session = Depends(get_db)):
+    result = db.execute(delete(SyncTaskLog).where(SyncTaskLog.status != "running"))
+    db.commit()
+    return {"deleted_count": result.rowcount or 0}
 
 
 @router.get("/health")
